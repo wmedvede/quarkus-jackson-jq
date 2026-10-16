@@ -9,7 +9,7 @@ import io.quarkus.runtime.annotations.ConfigRoot;
 import io.smallrye.config.ConfigMapping;
 import io.smallrye.config.WithConverter;
 import io.smallrye.config.WithDefault;
-import net.thisptr.jackson.jq.Version;
+import net.thisptr.jackson.jq.v2.spi.version.Version;
 
 @ConfigRoot(phase = ConfigPhase.BUILD_TIME)
 @ConfigMapping(prefix = "quarkus.jackson.jq")

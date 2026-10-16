@@ -1,12 +1,7 @@
 package io.quarkiverse.jackson.jq.deployment;
 
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 
 import org.jboss.jandex.AnnotationInstance;
 import org.jboss.jandex.AnnotationValue;
@@ -14,51 +9,12 @@ import org.jboss.jandex.ClassInfo;
 import org.jboss.jandex.DotName;
 import org.jboss.jandex.IndexView;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-
-import io.quarkus.deployment.ApplicationArchive;
-import io.quarkus.deployment.builditem.ApplicationArchivesBuildItem;
 import io.quarkus.deployment.recording.RecorderContext;
-import net.thisptr.jackson.jq.Function;
-import net.thisptr.jackson.jq.VersionRange;
-import net.thisptr.jackson.jq.internal.JqJson;
+import net.thisptr.jackson.jq.v2.spi.Function;
+import net.thisptr.jackson.jq.v2.spi.version.VersionRange;
 
 final class JacksonJqSupport {
     private JacksonJqSupport() {
-    }
-
-    static List<JqJson.JqFuncDef> lookupFunctionsFromConfig(
-            ApplicationArchivesBuildItem archives,
-            JacksonJqConfig config) throws IOException {
-
-        List<JqJson.JqFuncDef> answer = new ArrayList<>();
-        ObjectMapper mapper = new ObjectMapper();
-
-        for (ApplicationArchive archive : archives.getAllApplicationArchives()) {
-            for (Path root : archive.getRootDirectories()) {
-                final Path resourcePath = root.resolve("net/thisptr/jackson/jq/jq.json");
-
-                if (!Files.exists(resourcePath)) {
-                    continue;
-                }
-                if (!Files.isRegularFile(resourcePath)) {
-                    continue;
-                }
-
-                String functions = Files.readAllLines(resourcePath, StandardCharsets.UTF_8)
-                        .stream()
-                        .filter(l -> !l.isEmpty())
-                        .filter(l -> !l.startsWith("#"))
-                        .collect(Collectors.joining());
-
-                mapper.readValue(functions, JqJson.class).functions.stream()
-                        .filter(f -> f.version == null || f.version.contains(config.functions().version()))
-                        .forEach(answer::add);
-            }
-        }
-
-        return answer;
-
     }
 
     static List<JacksonJqFunctionBuildItem> lookupFunctions(

@@ -2,7 +2,7 @@ package io.quarkiverse.jackson.jq.deployment;
 
 import io.quarkus.builder.item.MultiBuildItem;
 import io.quarkus.runtime.RuntimeValue;
-import net.thisptr.jackson.jq.Function;
+import net.thisptr.jackson.jq.v2.spi.Function;
 
 public final class JacksonJqFunctionBuildItem extends MultiBuildItem {
     private final String name;
