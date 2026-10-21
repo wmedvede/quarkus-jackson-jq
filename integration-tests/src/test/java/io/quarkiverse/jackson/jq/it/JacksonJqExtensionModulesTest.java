@@ -105,7 +105,8 @@ class JacksonJqExtensionModulesTest {
         final ObjectMapper objectMapper = new ObjectMapper();
         final Document doc = new Document();
         doc.setDocument(objectMapper.createObjectNode().stringNode("aba"));
-        doc.setExpression("splits((\"a\", \"b\"))");
+        String IMPORT = "import \"jackson-jq/joni\" as joni; ";
+        doc.setExpression(IMPORT + "joni::splits((\"a\", \"b\"))");
 
         List<Object> result = given().when()
                 .contentType(ContentType.JSON)

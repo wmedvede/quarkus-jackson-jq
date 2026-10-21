@@ -60,6 +60,7 @@ public class ParserResource {
     public ArrayNode jqFunctions() {
         List<String> functions = collectJqFunctions();
         ArrayNode answer = mapper.createArrayNode();
+        System.out.println("XXX jqfunctions = " + functions);
         functions.forEach(answer::add);
         return answer;
     }
@@ -68,6 +69,7 @@ public class ParserResource {
     @GET
     public ArrayNode functions() {
         List<String> functions = collectFunctions();
+        System.out.println("XXX functions = " + functions);
         ArrayNode answer = mapper.createArrayNode();
         functions.forEach(answer::add);
         return answer;

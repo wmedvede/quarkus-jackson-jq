@@ -36,7 +36,8 @@ class JacksonJqProcessor {
     SyntheticBeanBuildItem quarkusEnvironmentBean(
             JacksonJqConfig config,
             JacksonJqEnvironmentRecorder recorder) {
-        RuntimeValue<Environment<JsonNode>> environment = recorder.createEnvironment(config.functions().version().toString());
+        RuntimeValue<Environment<JsonNode>> environment = recorder.createEnvironment(config.functions().version().toString(),
+                config.functions().excludes().orElse(null));
         DotName envDotName = DotName.createSimple(Environment.class.getName());
         DotName jsonNodeDotName = DotName.createSimple(JsonNode.class.getName());
         Type jsonNodeType = ClassType.create(jsonNodeDotName, Type.Kind.CLASS);
