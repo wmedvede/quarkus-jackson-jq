@@ -20,7 +20,9 @@ public class JacksonJqEnvironmentRecorder {
     public RuntimeValue<Environment<JsonNode>> createEnvironment(String version, List<String> exclusions) {
         Environment<JsonNode> environment = EnvironmentBuilder
                 .withDefaultLoaders(Jackson3JsonProvider.getInstance(), Version.valueOf(version))
-                .setFunctionFilter(FunctionFilter.denyNames(new HashSet<>(exclusions)))
+                .setFunctionFilter(new MyFunctionFilter())
+//                .setFunctionFilter(FunctionFilter.denyNames(new HashSet<>(exclusions)))
+                //                .registerModule("my-path-jackson-jq/uuid", new UuidModule())
                 .addFunctionLoader(new ClassPathFunctionLoader(Thread.currentThread().getContextClassLoader()))
                 .addModuleLoader(new ClassPathModuleLoader<>(Thread.currentThread().getContextClassLoader()))
                 .build();

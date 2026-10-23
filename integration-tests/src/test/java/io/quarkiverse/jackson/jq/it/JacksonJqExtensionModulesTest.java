@@ -15,6 +15,28 @@ import tools.jackson.databind.ObjectMapper;
 class JacksonJqExtensionModulesTest {
 
     /**
+     * Example of BuiltinFunctionLoader functions usage.
+     */
+    @Test
+    void localTimeTest() {
+        final ObjectMapper objectMapper = new ObjectMapper();
+        final Document doc = new Document();
+        doc.setDocument(objectMapper.readTree("{}"));
+        doc.setExpression("123 | localtime");
+
+        List<String> result = given().when()
+                .contentType(ContentType.JSON)
+                .body(objectMapper.writeValueAsString(doc))
+                .post("/jq/parse")
+                .then()
+                .statusCode(200)
+                .extract()
+                .jsonPath().get("");
+
+        assertThat(result).hasSize(1);
+    }
+
+    /**
      * Example of jackson-jq-ext-module-uuid extension module usage.
      */
     @Test
@@ -24,6 +46,32 @@ class JacksonJqExtensionModulesTest {
         doc.setDocument(objectMapper.readTree("{}"));
         String IMPORT = "import \"jackson-jq/uuid\" as uuid; ";
         doc.setExpression(IMPORT + "uuid::uuid4");
+
+        int expectedUUID64Size = "38941dd7-7d53-4855-ab72-2e2613ce9511".length();
+
+        List<String> result = given().when()
+                .contentType(ContentType.JSON)
+                .body(objectMapper.writeValueAsString(doc))
+                .post("/jq/parse")
+                .then()
+                .statusCode(200)
+                .extract()
+                .jsonPath().get("");
+
+        assertThat(result).hasSize(1);
+        assertThat(result.getFirst()).hasSize(expectedUUID64Size);
+    }
+
+    /**
+     * Example of jackson-jq-ext-module-uuid extension module usage.
+     */
+    @Test
+    void uuidModuleInclude() {
+        final ObjectMapper objectMapper = new ObjectMapper();
+        final Document doc = new Document();
+        doc.setDocument(objectMapper.readTree("{}"));
+        String INCLUDE = "include \"jackson-jq/uuid\"; ";
+        doc.setExpression(INCLUDE + "uuid4");
 
         int expectedUUID64Size = "38941dd7-7d53-4855-ab72-2e2613ce9511".length();
 
