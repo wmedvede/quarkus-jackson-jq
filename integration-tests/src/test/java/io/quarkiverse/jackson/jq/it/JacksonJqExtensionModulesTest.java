@@ -15,7 +15,29 @@ import tools.jackson.databind.ObjectMapper;
 class JacksonJqExtensionModulesTest {
 
     /**
-     * Example of jackson-jq-ext-module-uuid extension module usage.
+     * Example of BuiltinFunctionLoader functions usage.
+     */
+    @Test
+    void localTimeTest() {
+        final ObjectMapper objectMapper = new ObjectMapper();
+        final Document doc = new Document();
+        doc.setDocument(objectMapper.readTree("{}"));
+        doc.setExpression("123 | localtime");
+
+        List<String> result = given().when()
+                .contentType(ContentType.JSON)
+                .body(objectMapper.writeValueAsString(doc))
+                .post("/jq/parse")
+                .then()
+                .statusCode(200)
+                .extract()
+                .jsonPath().get("");
+
+        assertThat(result).hasSize(1);
+    }
+
+    /**
+     * Example of jackson-jq-ext-module-uuid extension module via import usage.
      */
     @Test
     void uuidModuleTest() {
@@ -41,7 +63,53 @@ class JacksonJqExtensionModulesTest {
     }
 
     /**
-     * Example of jackson-jq-ext-module-time extension module usage.
+     * Example of jackson-jq-ext-module-uuid extension module via include usage.
+     */
+    @Test
+    void uuidModuleInclude() {
+        final ObjectMapper objectMapper = new ObjectMapper();
+        final Document doc = new Document();
+        doc.setDocument(objectMapper.readTree("{}"));
+        String INCLUDE = "include \"jackson-jq/uuid\"; ";
+        doc.setExpression(INCLUDE + "uuid4");
+
+        int expectedUUID64Size = "38941dd7-7d53-4855-ab72-2e2613ce9511".length();
+
+        List<String> result = given().when()
+                .contentType(ContentType.JSON)
+                .body(objectMapper.writeValueAsString(doc))
+                .post("/jq/parse")
+                .then()
+                .statusCode(200)
+                .extract()
+                .jsonPath().get("");
+
+        assertThat(result).hasSize(1);
+        assertThat(result.getFirst()).hasSize(expectedUUID64Size);
+    }
+
+    /**
+     * Example of invocation of an excluded JavaFunction the jackson-jq-ext-module-uuid extension module.
+     */
+    @Test
+    void uuidModuleExcludedJqFunctionTest() {
+        final ObjectMapper objectMapper = new ObjectMapper();
+        final Document doc = new Document();
+        doc.setDocument(objectMapper.readTree("{}"));
+        String IMPORT = "import \"jackson-jq/uuid\" as uuid; ";
+        doc.setExpression(IMPORT + " \"example.com\" | uuid::uuid3(\"6ba7b810-9dad-11d1-80b4-00c04fd430c8\")");
+
+        // The invocation will fail with code 500 since the uuid3 function is excluded.
+        given().when()
+                .contentType(ContentType.JSON)
+                .body(objectMapper.writeValueAsString(doc))
+                .post("/jq/parse")
+                .then()
+                .statusCode(500);
+    }
+
+    /**
+     * Example of jackson-jq-ext-module-time extension module via import usage.
      */
     @Test
     void timeModuleTest() {
@@ -67,7 +135,7 @@ class JacksonJqExtensionModulesTest {
     }
 
     /**
-     * Example of jackson-jq-ext-module-uri extension module usage.
+     * Example of jackson-jq-ext-module-uri extension module via import usage.
      */
     @Test
     void uriModuleTest() {
@@ -105,7 +173,8 @@ class JacksonJqExtensionModulesTest {
         final ObjectMapper objectMapper = new ObjectMapper();
         final Document doc = new Document();
         doc.setDocument(objectMapper.createObjectNode().stringNode("aba"));
-        doc.setExpression("splits((\"a\", \"b\"))");
+        String IMPORT = "import \"jackson-jq/joni\" as joni; ";
+        doc.setExpression(IMPORT + "joni::splits((\"a\", \"b\"))");
 
         List<Object> result = given().when()
                 .contentType(ContentType.JSON)

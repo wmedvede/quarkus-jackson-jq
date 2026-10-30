@@ -29,6 +29,7 @@ import jakarta.ws.rs.core.MediaType;
 
 import org.jspecify.annotations.NonNull;
 
+import io.quarkiverse.jackson.jq.EnvironmentSupplier;
 import net.thisptr.jackson.jq.v2.core.Environment;
 import net.thisptr.jackson.jq.v2.core.JsonQuery;
 import net.thisptr.jackson.jq.v2.spi.exception.JsonQueryException;
@@ -42,14 +43,18 @@ import tools.jackson.databind.node.ArrayNode;
 public class ParserResource {
 
     @Inject
-    Environment<JsonNode> environment;
+    EnvironmentSupplier environment;
+
+    @Inject
+    Environment<JsonNode> producedEnvironment;
+
     @Inject
     ObjectMapper mapper;
 
     @Path("/parse")
     @POST
     public List<JsonNode> parse(final Document document) throws JsonQueryException {
-        final JsonQuery<JsonNode> query = environment.compile(document.getExpression());
+        final JsonQuery<JsonNode> query = environment.get().compile(document.getExpression());
         List<JsonNode> out = new ArrayList<>();
         query.apply(document.getDocument(), out::add);
         return out;
@@ -85,15 +90,15 @@ public class ParserResource {
     }
 
     private @NonNull List<String> collectJqFunctions() {
-        return environment.getFunctionLoaders().stream()
-                .flatMap(functionLoader -> functionLoader.getJqFunctions(environment.getJqVersion()).entrySet().stream())
+        return producedEnvironment.getFunctionLoaders().stream()
+                .flatMap(functionLoader -> functionLoader.getJqFunctions(environment.get().getJqVersion()).entrySet().stream())
                 .map(entry -> entry.getKey().name() + "/" + entry.getKey().arity())
                 .sorted().toList();
     }
 
     private @NonNull List<String> collectFunctions() {
-        return environment.getFunctionLoaders().stream()
-                .flatMap(functionLoader -> functionLoader.getFunctions(environment.getJqVersion()).entrySet().stream())
+        return producedEnvironment.getFunctionLoaders().stream()
+                .flatMap(functionLoader -> functionLoader.getFunctions(environment.get().getJqVersion()).entrySet().stream())
                 .map(entry -> entry.getKey().name() + "/" + entry.getKey().arity())
                 .sorted().toList();
     }

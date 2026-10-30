@@ -1,6 +1,7 @@
 package io.quarkiverse.jackson.jq.deployment;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import io.quarkus.runtime.annotations.ConfigGroup;
@@ -20,6 +21,8 @@ public interface JacksonJqConfig {
      */
     FunctionsConfig functions();
 
+    Map<String, JacksonJqModuleConfig> modules();
+
     @ConfigGroup
     interface FunctionsConfig {
         /**
@@ -31,6 +34,25 @@ public interface JacksonJqConfig {
 
         /**
          * List of functions to exclude
+         */
+        Optional<List<String>> excludes();
+    }
+
+    @ConfigGroup
+    interface JacksonJqModuleConfig {
+
+        /**
+         * TODO WM
+         *
+         * @return
+         */
+        @WithDefault("true")
+        boolean enabled();
+
+        /**
+         * TODO WM
+         *
+         * @return
          */
         Optional<List<String>> excludes();
     }
