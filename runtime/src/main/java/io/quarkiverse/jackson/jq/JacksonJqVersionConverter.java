@@ -1,4 +1,4 @@
-package io.quarkiverse.jackson.jq.deployment;
+package io.quarkiverse.jackson.jq;
 
 import org.eclipse.microprofile.config.spi.Converter;
 

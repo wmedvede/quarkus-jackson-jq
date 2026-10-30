@@ -1,6 +1,7 @@
-package io.quarkiverse.jackson.jq.deployment;
+package io.quarkiverse.jackson.jq;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import io.quarkus.runtime.annotations.ConfigGroup;
@@ -11,7 +12,7 @@ import io.smallrye.config.WithConverter;
 import io.smallrye.config.WithDefault;
 import net.thisptr.jackson.jq.v2.spi.version.Version;
 
-@ConfigRoot(phase = ConfigPhase.BUILD_TIME)
+@ConfigRoot(phase = ConfigPhase.RUN_TIME)
 @ConfigMapping(prefix = "quarkus.jackson.jq")
 public interface JacksonJqConfig {
 
@@ -19,6 +20,8 @@ public interface JacksonJqConfig {
      * Configure function related config
      */
     FunctionsConfig functions();
+
+    Map<String, JacksonJqModuleConfig> modules();
 
     @ConfigGroup
     interface FunctionsConfig {
@@ -31,6 +34,25 @@ public interface JacksonJqConfig {
 
         /**
          * List of functions to exclude
+         */
+        Optional<List<String>> excludes();
+    }
+
+    @ConfigGroup
+    interface JacksonJqModuleConfig {
+
+        /**
+         * TODO WM
+         *
+         * @return
+         */
+        @WithDefault("true")
+        boolean enabled();
+
+        /**
+         * TODO WM
+         *
+         * @return
          */
         Optional<List<String>> excludes();
     }

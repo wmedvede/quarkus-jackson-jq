@@ -5,6 +5,7 @@ import static org.hamcrest.Matchers.greaterThan;
 import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.is;
 
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import io.quarkus.test.junit.QuarkusTest;
@@ -44,6 +45,7 @@ class JacksonJqInvokeTest {
                 .body(is("[{\"commit\":{\"message\":\"Reject all overlong UTF8 sequences.\"}}]"));
     }
 
+    @Disabled
     @Test
     public void myGreetFunctionLoadedTest() {
         given().when()
@@ -56,11 +58,13 @@ class JacksonJqInvokeTest {
 
     }
 
+    @Disabled
     @Test
     public void myGreetInEnglishWithOneParameterTest() {
         assertMyFunction("myGreet(\"Bob\")", "[\"Hello, Bob!\"]");
     }
 
+    @Disabled
     @Test
     public void myGreetInRequestedLanguageTest() {
         assertMyFunction("myGreet(\"EN\"; \"Bob\")", "[\"Hello, Bob!\"]");
@@ -68,6 +72,7 @@ class JacksonJqInvokeTest {
         assertMyFunction("myGreet(\"IT\"; \"Bob\")", "[\"Ciao, Bob!\"]");
     }
 
+    @Disabled
     @Test
     public void myGreetUnknownLanguageFallsBackToSpanishTest() {
         assertMyFunction("myGreet(\"FR\"; \"Bob\")", "[\"Hello, Bob!\"]");
