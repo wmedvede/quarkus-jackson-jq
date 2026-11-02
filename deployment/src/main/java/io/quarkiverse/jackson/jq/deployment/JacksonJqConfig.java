@@ -17,7 +17,7 @@ import net.thisptr.jackson.jq.v2.spi.version.Version;
 public interface JacksonJqConfig {
 
     /**
-     * Configure function related config
+     * Configure function related config.
      */
     FunctionsConfig functions();
 
@@ -26,14 +26,14 @@ public interface JacksonJqConfig {
     @ConfigGroup
     interface FunctionsConfig {
         /**
-         * The supported jq version
+         * The supported jq version.
          */
         @WithDefault("1.8.2")
         @WithConverter(JacksonJqVersionConverter.class)
         Version version();
 
         /**
-         * List of functions to exclude
+         * List of functions to exclude.
          */
         Optional<List<String>> excludes();
     }
@@ -42,18 +42,12 @@ public interface JacksonJqConfig {
     interface JacksonJqModuleConfig {
 
         /**
-         * TODO WM
+         * Enables/disables a particular module. A jackson-jq module included as project dependency is enabled by default.
          *
-         * @return
+         * @return true if the module is enabled, false in any other case.
          */
         @WithDefault("true")
         boolean enabled();
 
-        /**
-         * TODO WM
-         *
-         * @return
-         */
-        Optional<List<String>> excludes();
     }
 }

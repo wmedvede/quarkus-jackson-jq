@@ -5,6 +5,9 @@ import static io.quarkiverse.jackson.jq.Utils.createInstance;
 import java.util.HashSet;
 import java.util.List;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import net.thisptr.jackson.jq.v2.core.Environment;
 import net.thisptr.jackson.jq.v2.core.EnvironmentBuilder;
 import net.thisptr.jackson.jq.v2.core.function.loaders.BuiltinFunctionLoader;
@@ -13,14 +16,20 @@ import net.thisptr.jackson.jq.v2.spi.module.Module;
 import net.thisptr.jackson.jq.v2.spi.version.Version;
 import tools.jackson.databind.JsonNode;
 
-public class JacksonJqEnvironmentRecorder {
+public class JacksonJqEnvironmentCreator {
 
-    public Environment<JsonNode> createEnvironment(String version, List<String> excludes,
+    private static final Logger LOGGER = LoggerFactory.getLogger(JacksonJqEnvironmentCreator.class);
+
+    private JacksonJqEnvironmentCreator() {
+    }
+
+    public static Environment<JsonNode> createEnvironment(String version, List<String> excludes,
             List<ModuleDescriptor> enabledModules, List<FunctionDescriptor> customFunctions) {
 
         FunctionFilter filter = FunctionFilter.denyNames(new HashSet<>(excludes));
         FilteringModuleLoader<JsonNode> moduleLoader = new FilteringModuleLoader<>(filter);
         enabledModules.forEach(enabledModule -> {
+            LOGGER.debug("Registering jackson-jq module: {}:{}", enabledModule.groupId(), enabledModule.artifactId());
             moduleLoader.registerModule(instantiateModule(enabledModule), enabledModule.id());
         });
 

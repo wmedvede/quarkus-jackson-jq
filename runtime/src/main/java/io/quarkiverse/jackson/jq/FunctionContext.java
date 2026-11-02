@@ -11,8 +11,8 @@ public final class FunctionContext {
     private final String locator;
 
     private FunctionContext(FunctionSignature signature, String locator) {
-        this.signature = Objects.requireNonNull(signature, "signature");
-        this.locator = Objects.requireNonNull(locator, "locator");
+        this.signature = signature;
+        this.locator = locator;
     }
 
     public static FunctionContext of(FunctionSignature signature, String locator) {

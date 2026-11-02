@@ -53,10 +53,7 @@ public class MyGreetFunction implements Function {
         return json.createString(greeting + ", " + text(json, name) + "!");
     }
 
-    // strings are used as-is, anything else is rendered as JSON
     private static <JsonNode> String text(JsonProvider<JsonNode> json, JsonNode value) {
-        // in the alpha2 return json.isString(value) ? json.getString(value) : json.format(value);
-        // in the 2.0.0-SNAPSHOT
         return json.isString(value) ? json.getString(value) : Objects.toString(value);
     }
 }

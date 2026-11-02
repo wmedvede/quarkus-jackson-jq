@@ -15,9 +15,8 @@ public class EnvironmentProducer {
         this.environmentSupplier = environmentSupplier;
     }
 
-    //TODO find a way to register this Producer bean programatically so we don't have the define a full bean.
     @Produces
-    public Environment<JsonNode> produceEnvironment() {
+    public Environment<JsonNode> produce() {
         return environmentSupplier.get();
     }
 }

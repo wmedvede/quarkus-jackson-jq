@@ -3,7 +3,6 @@ package io.quarkiverse.jackson.jq;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
 import net.thisptr.jackson.jq.v2.core.function.FunctionLoader;
@@ -19,12 +18,8 @@ public class FilteringFunctionLoader implements FunctionLoader {
     private final ConcurrentHashMap<Version, Map<FunctionSignature, JqFunction>> jqCache = new ConcurrentHashMap<>();
 
     public FilteringFunctionLoader(FunctionLoader delegate, FunctionFilter filter) {
-        this.delegate = Objects.requireNonNull(delegate, "delegate");
-        this.filter = Objects.requireNonNull(filter, "filter");
-    }
-
-    public FunctionFilter getFilter() {
-        return filter;
+        this.delegate = delegate;
+        this.filter = filter;
     }
 
     @Override

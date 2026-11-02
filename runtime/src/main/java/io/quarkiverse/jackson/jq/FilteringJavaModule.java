@@ -3,7 +3,6 @@ package io.quarkiverse.jackson.jq;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.Objects;
 
 import net.thisptr.jackson.jq.v2.spi.Function;
 import net.thisptr.jackson.jq.v2.spi.FunctionSignature;
@@ -20,11 +19,6 @@ public final class FilteringJavaModule implements JavaModule {
     }
 
     public static JavaModule of(JavaModule module, FunctionFilter filter, String locator) {
-        Objects.requireNonNull(module, "module");
-        Objects.requireNonNull(filter, "filter");
-        Objects.requireNonNull(locator, "locator");
-        if (filter == FunctionFilter.acceptAll())
-            return module;
         Map<FunctionSignature, Function> accepted = new LinkedHashMap<>();
         for (Map.Entry<FunctionSignature, Function> entry : module.getFunctions().entrySet()) {
             if (filter.accept(FunctionContext.of(entry.getKey(), locator)))

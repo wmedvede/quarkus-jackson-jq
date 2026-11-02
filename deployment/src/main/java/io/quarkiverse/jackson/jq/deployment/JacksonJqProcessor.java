@@ -10,17 +10,14 @@ import jakarta.inject.Singleton;
 
 import org.jboss.jandex.AnnotationInstance;
 import org.jboss.jandex.AnnotationValue;
-import org.jboss.jandex.ClassType;
 import org.jboss.jandex.DotName;
-import org.jboss.jandex.ParameterizedType;
-import org.jboss.jandex.Type;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.quarkiverse.jackson.jq.EnvironmentProducer;
 import io.quarkiverse.jackson.jq.EnvironmentSupplier;
 import io.quarkiverse.jackson.jq.FunctionDescriptor;
-import io.quarkiverse.jackson.jq.JacksonJqEnvironmentRecorder;
+import io.quarkiverse.jackson.jq.JacksonJqEnvironmentCreator;
 import io.quarkiverse.jackson.jq.JacksonJqModuleRegistry;
 import io.quarkiverse.jackson.jq.ModuleDescriptor;
 import io.quarkus.arc.deployment.AdditionalBeanBuildItem;
@@ -29,7 +26,7 @@ import io.quarkus.core.Phase;
 import io.quarkus.core.deployment.service.ServiceRegistrar;
 import io.quarkus.deployment.annotations.BuildProducer;
 import io.quarkus.deployment.annotations.BuildStep;
-import io.quarkus.deployment.builditem.CombinedIndexBuildItem;
+import io.quarkus.deployment.builditem.ApplicationIndexBuildItem;
 import io.quarkus.deployment.builditem.FeatureBuildItem;
 import io.quarkus.deployment.builditem.nativeimage.ReflectiveClassBuildItem;
 import io.quarkus.deployment.pkg.builditem.CurateOutcomeBuildItem;
@@ -93,15 +90,13 @@ class JacksonJqProcessor {
     }
 
     @BuildStep
-    void scanFunctions(CombinedIndexBuildItem combinedIndex,
+    void scanFunctions(ApplicationIndexBuildItem applicationIndex,
             BuildProducer<JacksonJqFunctionBuildItem> functionBuildItemBuildProducer) {
         DotName functionName = DotName.createSimple(Function.class.getName());
         DotName functionRegistrationName = DotName.createSimple(FunctionRegistration.class.getName());
         DotName functionRegistrationsName = DotName.createSimple(FunctionRegistrations.class.getName());
-        combinedIndex.getIndex().getAllKnownImplementations(functionName)
+        applicationIndex.getIndex().getAllKnownImplementations(functionName)
                 .forEach(functionClass -> {
-                    System.out.println("filtering: " + functionClass.name());
-                    System.out.println("annotations: " + functionClass.annotations(functionRegistrationName).size());
                     List<AnnotationInstance> functionRegistrations = new ArrayList<>();
                     List<AnnotationInstance> functionRegistrationAnnotations = functionClass
                             .annotations(functionRegistrationName);
@@ -117,23 +112,18 @@ class JacksonJqProcessor {
                             functionRegistrations.addAll(Arrays.asList(functionRegistrationInstances));
                         }
                     }
-                    functionRegistrations.forEach(annotationInstance -> {
-                        functionBuildItemBuildProducer.produce(new JacksonJqFunctionBuildItem(
-                                newFunctionDescriptor(functionClass.name().toString(), annotationInstance)));
-                    });
+                    functionRegistrations.forEach(
+                            annotationInstance -> functionBuildItemBuildProducer.produce(new JacksonJqFunctionBuildItem(
+                                    newFunctionDescriptor(functionClass.name().toString(), annotationInstance))));
                 });
     }
 
     @BuildStep
-    void quarkusEnvironmentBean(JacksonJqConfig config, List<JacksonJqModuleBuildItem> moduleBuildItems,
+    void setupEnvironmentBean(JacksonJqConfig config, List<JacksonJqModuleBuildItem> moduleBuildItems,
             List<JacksonJqFunctionBuildItem> functionBuildItems,
             BuildProducer<SyntheticBeanBuildItem> syntheticBeansBuildItemProducer,
+            BuildProducer<AdditionalBeanBuildItem> additionalBeans,
             ServiceRegistrar serviceRegistrar) {
-
-        DotName envDotName = DotName.createSimple(Environment.class.getName());
-        DotName jsonNodeDotName = DotName.createSimple(JsonNode.class.getName());
-        Type jsonNodeType = ClassType.create(jsonNodeDotName, Type.Kind.CLASS);
-        ParameterizedType envType = ParameterizedType.create(envDotName, new Type[] { jsonNodeType }, null);
 
         String version = config.functions().version().toString();
         List<String> excludes = config.functions().excludes().orElse(new ArrayList<>()).stream().toList();
@@ -142,36 +132,19 @@ class JacksonJqProcessor {
         List<FunctionDescriptor> customFunctions = functionBuildItems.stream()
                 .map(JacksonJqFunctionBuildItem::getFunctionDescriptor).toList();
 
-        serviceRegistrar.forService(EnvironmentSupplier.class)
+        serviceRegistrar.forService(EnvironmentSupplier.class, "environment-supplier")
                 .atPhase(Phase.STATIC_INIT)
                 .onStart((startContext) -> {
-                    JacksonJqEnvironmentRecorder recorder = new JacksonJqEnvironmentRecorder();
-                    Environment<JsonNode> env = recorder.createEnvironment(version, excludes, enabledModules, customFunctions);
+                    Environment<JsonNode> env = JacksonJqEnvironmentCreator.createEnvironment(version, excludes, enabledModules,
+                            customFunctions);
                     return new EnvironmentSupplier(env);
                 });
 
-        /*
-         * serviceRegistrar.forService(EnvironmentProducer.class)
-         * .atPhase(Phase.STATIC_INIT)
-         * .require(EnvironmentSupplier.class)
-         * .onStart((startContext, environmentSupplier) -> new EnvironmentProducer(environmentSupplier));
-         */
-
         syntheticBeansBuildItemProducer.produce(SyntheticBeanBuildItem.configure(EnvironmentSupplier.class)
-                .serviceValue(EnvironmentSupplier.class/* , "my-bean-service" */)
+                .serviceValue(EnvironmentSupplier.class, "environment-supplier")
                 .scope(Singleton.class)
                 .done());
 
-        /*
-         * syntheticBeansBuildItemProducer.produce(SyntheticBeanBuildItem.configure(EnvironmentProducer.class)
-         * .serviceValue(EnvironmentProducer.class/* , "my-bean-service" )
-         * .scope(Singleton.class)
-         * .done());
-         */
-    }
-
-    @BuildStep
-    void registerEnvironmentProducer(BuildProducer<AdditionalBeanBuildItem> additionalBeans) {
         additionalBeans.produce(AdditionalBeanBuildItem.unremovableOf(EnvironmentProducer.class));
     }
 

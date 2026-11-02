@@ -47,10 +47,6 @@ public final class JacksonJqModuleRegistry {
     private JacksonJqModuleRegistry() {
     }
 
-    public static List<ModuleDescriptor> all() {
-        return MODULES;
-    }
-
     public static ModuleDescriptor findById(String id) {
         return MODULES.stream().filter(m -> m.id().equals(id)).findFirst().orElse(null);
     }

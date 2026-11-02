@@ -15,7 +15,7 @@ public class FilteringModuleLoader<JsonNode> implements ModuleLoader<JsonNode> {
     private record ModuleEntry(Module module, String locator) {
     }
 
-    private final Map<String, ModuleEntry> pathAndModules = new HashMap<>();
+    private final Map<String, ModuleEntry> moduleByPath = new HashMap<>();
     private final FunctionFilter filter;
 
     public FilteringModuleLoader(FunctionFilter filter) {
@@ -24,13 +24,13 @@ public class FilteringModuleLoader<JsonNode> implements ModuleLoader<JsonNode> {
 
     public void registerModule(Module module, String locator) {
         for (ModuleRegistration annotation : module.getClass().getAnnotationsByType(ModuleRegistration.class)) {
-            pathAndModules.put(annotation.path(), new ModuleEntry(module, locator));
+            moduleByPath.put(annotation.path(), new ModuleEntry(module, locator));
         }
     }
 
     @Override
     public Module loadModule(String path, Maybe<JsonNode> metadata) throws JsonQueryException {
-        ModuleEntry entry = pathAndModules.get(path);
+        ModuleEntry entry = moduleByPath.get(path);
         if (entry == null) {
             throw new ModuleNotFoundException(path);
         }
