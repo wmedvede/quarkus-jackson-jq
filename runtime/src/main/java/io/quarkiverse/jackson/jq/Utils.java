@@ -13,4 +13,14 @@ public final class Utils {
                 Thread.currentThread().getContextClassLoader());
         return (T) clazz.getDeclaredConstructor().newInstance();
     }
+
+    @SuppressWarnings("unchecked")
+    public static <T> T createInstance(String className, Class<?>[] parameterTypes, Object... initargs)
+            throws ReflectiveOperationException {
+        Class<?> clazz = Class.forName(
+                className,
+                true,
+                Thread.currentThread().getContextClassLoader());
+        return (T) clazz.getDeclaredConstructor(parameterTypes).newInstance(initargs);
+    }
 }

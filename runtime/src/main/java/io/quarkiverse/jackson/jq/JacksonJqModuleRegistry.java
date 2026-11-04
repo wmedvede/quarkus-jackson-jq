@@ -13,6 +13,8 @@ import java.util.List;
 public final class JacksonJqModuleRegistry {
 
     public static final String GROUP_ID = "net.thisptr.jackson.jq.v2";
+    public static final String JONI_MODULE_ARTIFACT_ID = "jackson-jq-ext-module-joni";
+    public static final String RE2_MODULE_ARTIFACT_ID = "jackson-jq-ext-module-re2";
 
     private static final List<ModuleDescriptor> MODULES = List.of(
             // Bundled by default: safe, in-memory execution.

@@ -1,10 +1,13 @@
 package io.quarkiverse.jackson.jq.deployment;
 
+import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.concurrent.atomic.AtomicReference;
 
 import jakarta.inject.Singleton;
 
@@ -14,9 +17,13 @@ import org.jboss.jandex.DotName;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.quarkiverse.jackson.jq.EnabledModule;
 import io.quarkiverse.jackson.jq.EnvironmentProducer;
 import io.quarkiverse.jackson.jq.EnvironmentSupplier;
+import io.quarkiverse.jackson.jq.FilteringJavaModule;
+import io.quarkiverse.jackson.jq.FilteringJqModule;
 import io.quarkiverse.jackson.jq.FunctionDescriptor;
+import io.quarkiverse.jackson.jq.FunctionFilter;
 import io.quarkiverse.jackson.jq.JacksonJqEnvironmentCreator;
 import io.quarkiverse.jackson.jq.JacksonJqModuleRegistry;
 import io.quarkiverse.jackson.jq.ModuleDescriptor;
@@ -24,16 +31,26 @@ import io.quarkus.arc.deployment.AdditionalBeanBuildItem;
 import io.quarkus.arc.deployment.SyntheticBeanBuildItem;
 import io.quarkus.core.Phase;
 import io.quarkus.core.deployment.service.ServiceRegistrar;
+import io.quarkus.deployment.GeneratedClassGizmoAdaptor;
 import io.quarkus.deployment.annotations.BuildProducer;
 import io.quarkus.deployment.annotations.BuildStep;
 import io.quarkus.deployment.builditem.ApplicationIndexBuildItem;
 import io.quarkus.deployment.builditem.FeatureBuildItem;
+import io.quarkus.deployment.builditem.GeneratedClassBuildItem;
 import io.quarkus.deployment.builditem.nativeimage.ReflectiveClassBuildItem;
 import io.quarkus.deployment.pkg.builditem.CurateOutcomeBuildItem;
+import io.quarkus.gizmo.ClassCreator;
+import io.quarkus.gizmo.ClassOutput;
+import io.quarkus.gizmo.MethodCreator;
+import io.quarkus.gizmo.MethodDescriptor;
+import io.quarkus.gizmo.ResultHandle;
 import net.thisptr.jackson.jq.v2.core.Environment;
 import net.thisptr.jackson.jq.v2.spi.Function;
 import net.thisptr.jackson.jq.v2.spi.annotations.FunctionRegistration;
 import net.thisptr.jackson.jq.v2.spi.annotations.FunctionRegistrations;
+import net.thisptr.jackson.jq.v2.spi.annotations.ModuleRegistration;
+import net.thisptr.jackson.jq.v2.spi.module.JavaModule;
+import net.thisptr.jackson.jq.v2.spi.module.JqModule;
 import net.thisptr.jackson.jq.v2.spi.version.Version;
 import net.thisptr.jackson.jq.v2.spi.version.VersionRange;
 import tools.jackson.databind.JsonNode;
@@ -50,8 +67,10 @@ class JacksonJqProcessor {
     @BuildStep
     void scanModules(JacksonJqConfig config, CurateOutcomeBuildItem curateOutcome,
             BuildProducer<JacksonJqModuleBuildItem> moduleBuildItemBuildProducer) {
-        List<ModuleDescriptor> enabledModules = new ArrayList<>();
         Map<String, JacksonJqConfig.JacksonJqModuleConfig> unProcessedModules = new HashMap<>(config.modules());
+        AtomicReference<ModuleDescriptor> joniWasEnabled = new AtomicReference<>();
+        AtomicReference<ModuleDescriptor> re2WasEnabled = new AtomicReference<>();
+
         curateOutcome.getApplicationModel().getRuntimeDependencies()
                 .forEach(dep -> {
                     if (JacksonJqModuleRegistry.GROUP_ID.equals(dep.getGroupId())) {
@@ -59,13 +78,38 @@ class JacksonJqProcessor {
                         if (moduleDescriptor != null) {
                             JacksonJqConfig.JacksonJqModuleConfig moduleConfig = unProcessedModules.get(moduleDescriptor.id());
                             if (moduleConfig == null || moduleConfig.enabled()) {
-                                enabledModules.add(moduleDescriptor);
+                                JacksonJqConfig.Strategy strategy = moduleConfig != null ? moduleConfig.strategy()
+                                        : JacksonJqConfig.DEFAULT_STRATEGY;
+                                Optional<String> alias = moduleConfig != null ? moduleConfig.alias() : Optional.empty();
+                                Optional<String> path = moduleConfig != null ? moduleConfig.path() : Optional.empty();
+                                if (strategy == JacksonJqConfig.Strategy.IMPORT) {
+                                    String aliasValue = alias.orElseThrow(() -> new IllegalArgumentException(String.format(
+                                            "JacksonJq module configuration \"quarkus.jackson.jq\".%s with the strategy = 'import' requires configuring the 'alias' property. You must add the property \"quarkus.jackson.jq\".%s.alias with a non-empty value.",
+                                            moduleDescriptor.id(), moduleDescriptor.id())));
+                                    moduleBuildItemBuildProducer
+                                            .produce(JacksonJqModuleBuildItem.forImport(moduleDescriptor, aliasValue));
+                                } else if (strategy == JacksonJqConfig.Strategy.REGISTER) {
+                                    moduleBuildItemBuildProducer.produce(JacksonJqModuleBuildItem.forRegister(moduleDescriptor,
+                                            path.orElse(null)));
+                                } else {
+                                    moduleBuildItemBuildProducer.produce(JacksonJqModuleBuildItem.forInclude(moduleDescriptor));
+                                }
+                                if (JacksonJqModuleRegistry.JONI_MODULE_ARTIFACT_ID.equals(moduleDescriptor.artifactId())) {
+                                    joniWasEnabled.set(moduleDescriptor);
+                                } else if (JacksonJqModuleRegistry.RE2_MODULE_ARTIFACT_ID
+                                        .equals(moduleDescriptor.artifactId())) {
+                                    re2WasEnabled.set(moduleDescriptor);
+                                }
                             }
                             unProcessedModules.remove(moduleDescriptor.id());
                         }
                     }
                 });
 
+        if (joniWasEnabled.get() != null && re2WasEnabled.get() != null) {
+            throw new IllegalArgumentException(
+                    "JoniRegexModule and Re2RegexModule cannot be enabled at the same time. Disable one by setting either 'quarkus.jackson.jq.modules.joni.enabled=false' or 'quarkus.jackson.jq.modules.re2.enabled=false'.");
+        }
         unProcessedModules.forEach((id, configuredModule) -> {
             ModuleDescriptor moduleDescriptor = JacksonJqModuleRegistry.findById(id);
             if (moduleDescriptor == null) {
@@ -85,8 +129,6 @@ class JacksonJqProcessor {
                         id, id, JacksonJqModuleRegistry.GROUP_ID, moduleDescriptor.artifactId());
             }
         });
-        enabledModules
-                .forEach(enabledModule -> moduleBuildItemBuildProducer.produce(new JacksonJqModuleBuildItem(enabledModule)));
     }
 
     @BuildStep
@@ -119,7 +161,7 @@ class JacksonJqProcessor {
     }
 
     @BuildStep
-    void setupEnvironmentBean(JacksonJqConfig config, List<JacksonJqModuleBuildItem> moduleBuildItems,
+    void registerEnvironmentBeans(JacksonJqConfig config, List<JacksonJqModuleBuildItem> moduleBuildItems,
             List<JacksonJqFunctionBuildItem> functionBuildItems,
             BuildProducer<SyntheticBeanBuildItem> syntheticBeansBuildItemProducer,
             BuildProducer<AdditionalBeanBuildItem> additionalBeans,
@@ -127,7 +169,12 @@ class JacksonJqProcessor {
 
         String version = config.functions().version().toString();
         List<String> excludes = config.functions().excludes().orElse(new ArrayList<>()).stream().toList();
-        List<ModuleDescriptor> enabledModules = moduleBuildItems.stream().map(JacksonJqModuleBuildItem::getModuleDescriptor)
+        List<EnabledModule> enabledModules = moduleBuildItems.stream()
+                .map(moduleBuildItem -> new EnabledModule(moduleBuildItem.getModuleDescriptor(),
+                        generateFilteringClassName(moduleBuildItem.getModuleDescriptor().className()),
+                        moduleBuildItem.getStrategy().name(),
+                        moduleBuildItem.getAlias(),
+                        moduleBuildItem.getPath()))
                 .toList();
         List<FunctionDescriptor> customFunctions = functionBuildItems.stream()
                 .map(JacksonJqFunctionBuildItem::getFunctionDescriptor).toList();
@@ -146,6 +193,59 @@ class JacksonJqProcessor {
                 .done());
 
         additionalBeans.produce(AdditionalBeanBuildItem.unremovableOf(EnvironmentProducer.class));
+    }
+
+    @BuildStep
+    void generateFilteringModules(List<JacksonJqModuleBuildItem> moduleBuildItems,
+            BuildProducer<GeneratedClassBuildItem> generatedClassProducer) {
+        ClassOutput classOutput = new GeneratedClassGizmoAdaptor(generatedClassProducer, true);
+        for (JacksonJqModuleBuildItem moduleBuildItem : moduleBuildItems) {
+            String inputClassName = moduleBuildItem.getModuleDescriptor().className();
+            try {
+                Class<?> inputClass = Thread.currentThread().getContextClassLoader().loadClass(inputClassName);
+                Class<?> baseFilteriongClass;
+                Class<?> baseModuleClass;
+                if (JavaModule.class.isAssignableFrom(inputClass)) {
+                    baseFilteriongClass = FilteringJavaModule.class;
+                    baseModuleClass = JavaModule.class;
+                } else {
+                    baseFilteriongClass = FilteringJqModule.class;
+                    baseModuleClass = JqModule.class;
+                }
+                String generatedClassName = generateFilteringClassName(inputClass.getName());
+                try (ClassCreator classCreator = ClassCreator.builder()
+                        .classOutput(classOutput)
+                        .className(generatedClassName)
+                        .superClass(baseFilteriongClass)
+                        .build()) {
+
+                    for (ModuleRegistration registration : inputClass.getAnnotationsByType(ModuleRegistration.class)) {
+                        classCreator.addAnnotation(ModuleRegistration.class)
+                                .addValue("path", registration.path());
+                    }
+
+                    try (MethodCreator ctor = classCreator.getConstructorCreator(FunctionFilter.class, String.class)) {
+                        ctor.setModifiers(Modifier.PUBLIC);
+
+                        ResultHandle thisHandle = ctor.getThis();
+                        ResultHandle delegateHandle = ctor.newInstance(MethodDescriptor.ofConstructor(inputClass));
+                        ResultHandle filterHandle = ctor.getMethodParam(0);
+                        ResultHandle locatorHandle = ctor.getMethodParam(1);
+
+                        ctor.invokeSpecialMethod(
+                                MethodDescriptor.ofConstructor(baseFilteriongClass, baseModuleClass,
+                                        FunctionFilter.class, String.class),
+                                thisHandle,
+                                delegateHandle,
+                                filterHandle,
+                                locatorHandle);
+                        ctor.returnVoid();
+                    }
+                }
+            } catch (ClassNotFoundException e) {
+                LOGGER.warn("Failed to load module class for Gizmo generation: {}", inputClassName, e);
+            }
+        }
     }
 
     @BuildStep
@@ -188,5 +288,11 @@ class JacksonJqProcessor {
             maxInclusive = versionRangeSpecInstance.value("maxInclusive").asBoolean();
         }
         return VersionRange.of(min, minInclusive, max, maxInclusive);
+    }
+
+    private static String generateFilteringClassName(String className) {
+        int lastSeparator = className.lastIndexOf(".");
+        String simpleClassName = className.substring(lastSeparator + 1);
+        return "io.quarkiverse.jackson.jq.modules.Filtering" + simpleClassName;
     }
 }

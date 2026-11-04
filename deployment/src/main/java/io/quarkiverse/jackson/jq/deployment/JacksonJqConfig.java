@@ -16,11 +16,22 @@ import net.thisptr.jackson.jq.v2.spi.version.Version;
 @ConfigMapping(prefix = "quarkus.jackson.jq")
 public interface JacksonJqConfig {
 
+    enum Strategy {
+        REGISTER,
+        IMPORT,
+        INCLUDE
+    }
+
+    Strategy DEFAULT_STRATEGY = Strategy.REGISTER;
+
     /**
-     * Configure function related config.
+     * Configure function related configurations.
      */
     FunctionsConfig functions();
 
+    /**
+     * Configure module related configurations.
+     */
     Map<String, JacksonJqModuleConfig> modules();
 
     @ConfigGroup
@@ -49,5 +60,27 @@ public interface JacksonJqConfig {
         @WithDefault("true")
         boolean enabled();
 
+        /**
+         * Configures strategy for incorporating the jackson-jq model into the Environment.
+         *
+         * @return the configured strategy.
+         */
+
+        @WithDefault("register")
+        Strategy strategy();
+
+        /**
+         * Mandatory if strategy is IMPORT. Ignored otherwise.
+         *
+         * @return The alias used to import the module into the Environment.
+         */
+        Optional<String> alias();
+
+        /**
+         * Optional. Only applies if strategy is REGISTER.
+         *
+         * @return The path for the module registration into the Environment.
+         */
+        Optional<String> path();
     }
 }
