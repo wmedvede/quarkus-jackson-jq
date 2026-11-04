@@ -43,10 +43,10 @@ import tools.jackson.databind.node.ArrayNode;
 public class ParserResource {
 
     @Inject
-    EnvironmentSupplier environment;
+    EnvironmentSupplier environmentSupplier;
 
     @Inject
-    Environment<JsonNode> producedEnvironment;
+    Environment<JsonNode> environment;
 
     @Inject
     ObjectMapper mapper;
@@ -54,7 +54,7 @@ public class ParserResource {
     @Path("/parse")
     @POST
     public List<JsonNode> parse(final Document document) throws JsonQueryException {
-        final JsonQuery<JsonNode> query = environment.get().compile(document.getExpression());
+        final JsonQuery<JsonNode> query = environmentSupplier.get().compile(document.getExpression());
         List<JsonNode> out = new ArrayList<>();
         query.apply(document.getDocument(), out::add);
         return out;
@@ -90,15 +90,16 @@ public class ParserResource {
     }
 
     private @NonNull List<String> collectJqFunctions() {
-        return producedEnvironment.getFunctionLoaders().stream()
-                .flatMap(functionLoader -> functionLoader.getJqFunctions(environment.get().getJqVersion()).entrySet().stream())
+        return environment.getFunctionLoaders().stream()
+                .flatMap(functionLoader -> functionLoader.getJqFunctions(environment.getJqVersion()).entrySet().stream())
                 .map(entry -> entry.getKey().name() + "/" + entry.getKey().arity())
                 .sorted().toList();
     }
 
     private @NonNull List<String> collectFunctions() {
-        return producedEnvironment.getFunctionLoaders().stream()
-                .flatMap(functionLoader -> functionLoader.getFunctions(environment.get().getJqVersion()).entrySet().stream())
+        return environmentSupplier.get().getFunctionLoaders().stream()
+                .flatMap(functionLoader -> functionLoader.getFunctions(environmentSupplier.get().getJqVersion()).entrySet()
+                        .stream())
                 .map(entry -> entry.getKey().name() + "/" + entry.getKey().arity())
                 .sorted().toList();
     }

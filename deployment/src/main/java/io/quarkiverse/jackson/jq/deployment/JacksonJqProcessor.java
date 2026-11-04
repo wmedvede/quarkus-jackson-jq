@@ -3,6 +3,7 @@ package io.quarkiverse.jackson.jq.deployment;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -67,7 +68,7 @@ class JacksonJqProcessor {
     @BuildStep
     void scanModules(JacksonJqConfig config, CurateOutcomeBuildItem curateOutcome,
             BuildProducer<JacksonJqModuleBuildItem> moduleBuildItemBuildProducer) {
-        Map<String, JacksonJqConfig.JacksonJqModuleConfig> unProcessedModules = new HashMap<>(config.modules());
+        Map<String, JacksonJqConfig.JacksonJqModuleConfig> unprocessedModules = new HashMap<>(config.modules());
         AtomicReference<ModuleDescriptor> joniWasEnabled = new AtomicReference<>();
         AtomicReference<ModuleDescriptor> re2WasEnabled = new AtomicReference<>();
 
@@ -76,7 +77,7 @@ class JacksonJqProcessor {
                     if (JacksonJqModuleRegistry.GROUP_ID.equals(dep.getGroupId())) {
                         ModuleDescriptor moduleDescriptor = JacksonJqModuleRegistry.findByArtifactId(dep.getArtifactId());
                         if (moduleDescriptor != null) {
-                            JacksonJqConfig.JacksonJqModuleConfig moduleConfig = unProcessedModules.get(moduleDescriptor.id());
+                            JacksonJqConfig.JacksonJqModuleConfig moduleConfig = unprocessedModules.get(moduleDescriptor.id());
                             if (moduleConfig == null || moduleConfig.enabled()) {
                                 JacksonJqConfig.Strategy strategy = moduleConfig != null ? moduleConfig.strategy()
                                         : JacksonJqConfig.DEFAULT_STRATEGY;
@@ -101,7 +102,7 @@ class JacksonJqProcessor {
                                     re2WasEnabled.set(moduleDescriptor);
                                 }
                             }
-                            unProcessedModules.remove(moduleDescriptor.id());
+                            unprocessedModules.remove(moduleDescriptor.id());
                         }
                     }
                 });
@@ -110,7 +111,7 @@ class JacksonJqProcessor {
             throw new IllegalArgumentException(
                     "JoniRegexModule and Re2RegexModule cannot be enabled at the same time. Disable one by setting either 'quarkus.jackson.jq.modules.joni.enabled=false' or 'quarkus.jackson.jq.modules.re2.enabled=false'.");
         }
-        unProcessedModules.forEach((id, configuredModule) -> {
+        unprocessedModules.forEach((id, configuredModule) -> {
             ModuleDescriptor moduleDescriptor = JacksonJqModuleRegistry.findById(id);
             if (moduleDescriptor == null) {
                 LOGGER.warn("Configured module quarkus.jackson.jq.modules.{} is not recognized as a valid JacksonJq module.",
@@ -168,7 +169,7 @@ class JacksonJqProcessor {
             ServiceRegistrar serviceRegistrar) {
 
         String version = config.functions().version().toString();
-        List<String> excludes = config.functions().excludes().orElse(new ArrayList<>()).stream().toList();
+        List<String> excludes = Collections.unmodifiableList(config.functions().excludes().orElse(new ArrayList<>()));
         List<EnabledModule> enabledModules = moduleBuildItems.stream()
                 .map(moduleBuildItem -> new EnabledModule(moduleBuildItem.getModuleDescriptor(),
                         generateFilteringClassName(moduleBuildItem.getModuleDescriptor().className()),
@@ -203,20 +204,20 @@ class JacksonJqProcessor {
             String inputClassName = moduleBuildItem.getModuleDescriptor().className();
             try {
                 Class<?> inputClass = Thread.currentThread().getContextClassLoader().loadClass(inputClassName);
-                Class<?> baseFilteriongClass;
+                Class<?> baseFilteringClass;
                 Class<?> baseModuleClass;
                 if (JavaModule.class.isAssignableFrom(inputClass)) {
-                    baseFilteriongClass = FilteringJavaModule.class;
+                    baseFilteringClass = FilteringJavaModule.class;
                     baseModuleClass = JavaModule.class;
                 } else {
-                    baseFilteriongClass = FilteringJqModule.class;
+                    baseFilteringClass = FilteringJqModule.class;
                     baseModuleClass = JqModule.class;
                 }
                 String generatedClassName = generateFilteringClassName(inputClass.getName());
                 try (ClassCreator classCreator = ClassCreator.builder()
                         .classOutput(classOutput)
                         .className(generatedClassName)
-                        .superClass(baseFilteriongClass)
+                        .superClass(baseFilteringClass)
                         .build()) {
 
                     for (ModuleRegistration registration : inputClass.getAnnotationsByType(ModuleRegistration.class)) {
@@ -233,7 +234,7 @@ class JacksonJqProcessor {
                         ResultHandle locatorHandle = ctor.getMethodParam(1);
 
                         ctor.invokeSpecialMethod(
-                                MethodDescriptor.ofConstructor(baseFilteriongClass, baseModuleClass,
+                                MethodDescriptor.ofConstructor(baseFilteringClass, baseModuleClass,
                                         FunctionFilter.class, String.class),
                                 thisHandle,
                                 delegateHandle,
@@ -243,7 +244,7 @@ class JacksonJqProcessor {
                     }
                 }
             } catch (ClassNotFoundException e) {
-                LOGGER.warn("Failed to load module class for Gizmo generation: {}", inputClassName, e);
+                throw new IllegalStateException("Failed to load module class for Gizmo generation: " + inputClassName, e);
             }
         }
     }
@@ -273,21 +274,33 @@ class JacksonJqProcessor {
         int major = versionInstance.value("major").asInt();
         int minor = versionInstance.value("minor").asInt();
         int patch = versionInstance.value("patch").asInt();
+        if (major < 0 && minor < 0 && patch < 0) {
+            // un-bounded version
+            return null;
+        }
         return Version.of(Math.max(major, 0), Math.max(minor, 0), Math.max(patch, 0));
     }
 
+    private static Version parseVersion(AnnotationInstance annotationInstance, String valueName) {
+        if (annotationInstance.value(valueName) != null) {
+            return parseVersion(annotationInstance.value(valueName).asNested());
+        }
+        return null;
+    }
+
     private static VersionRange parseVersionRange(AnnotationInstance versionRangeSpecInstance) {
-        Version min = parseVersion(versionRangeSpecInstance.value("min").asNested());
-        boolean minInclusive = true;
-        if (versionRangeSpecInstance.value("minInclusive") != null) {
-            minInclusive = versionRangeSpecInstance.value("minInclusive").asBoolean();
-        }
-        Version max = parseVersion(versionRangeSpecInstance.value("max").asNested());
-        boolean maxInclusive = false;
-        if (versionRangeSpecInstance.value("maxInclusive") != null) {
-            maxInclusive = versionRangeSpecInstance.value("maxInclusive").asBoolean();
-        }
+        Version min = parseVersion(versionRangeSpecInstance, "min");
+        boolean minInclusive = parseBoolean(versionRangeSpecInstance, "minInclusive", true);
+        Version max = parseVersion(versionRangeSpecInstance, "max");
+        boolean maxInclusive = parseBoolean(versionRangeSpecInstance, "maxInclusive", false);
         return VersionRange.of(min, minInclusive, max, maxInclusive);
+    }
+
+    private static boolean parseBoolean(AnnotationInstance annotationInstance, String valueName, boolean defaultValue) {
+        if (annotationInstance.value(valueName) != null) {
+            return annotationInstance.value(valueName).asBoolean();
+        }
+        return defaultValue;
     }
 
     private static String generateFilteringClassName(String className) {

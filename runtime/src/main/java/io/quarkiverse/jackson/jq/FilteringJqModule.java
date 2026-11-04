@@ -32,7 +32,7 @@ public class FilteringJqModule implements JqModule {
         if (module instanceof JavaModule) {
             return new FilteringJavaModule((JavaModule) module, filter, locator);
         }
-        return delegate.loadModule(importPath, searchPath);
+        return module;
     }
 
     @Override

@@ -141,8 +141,8 @@ class JacksonJqExtensionModulesTest {
     /**
      * Example of jackson-jq-ext-module-time extension module usage via expression import when an alternative path is
      * configured.
-     * 1) Since no quarkus.jackson.jq.modules.uuid.strategy is configured, the default "register" strategy is applied.
-     * 2) Since the quarkus.jackson.jq.modules.uuid.path=jackson-jq/uuid-example-path, was provided, the module is
+     * 1) Since no quarkus.jackson.jq.modules.time.strategy is configured, the default "register" strategy is applied.
+     * 2) Since the quarkus.jackson.jq.modules.time.path=jackson-jq/time-example-path, was provided, the module is
      * registered under the path "jackson-jq/uuid-example-path".
      */
     @Test
@@ -150,8 +150,8 @@ class JacksonJqExtensionModulesTest {
         final ObjectMapper objectMapper = new ObjectMapper();
         final Document doc = new Document();
         doc.setDocument(objectMapper.readTree("{}"));
-        // import the module by using the user provided registration path "jackson-jq/uuid-example-path".
-        String IMPORT = "import \"jackson-jq/uuid-example-path\" as time; ";
+        // import the module by using the user provided registration path "jackson-jq/time-example-path".
+        String IMPORT = "import \"jackson-jq/time-example-path\" as time; ";
 
         doc.setExpression(IMPORT + "1792152626431 | time::strftime(\"yyyy-MM-dd HH:mm:ss.SSSXXX\"; \"UTC\")");
         String expectedTime = "2026-10-16 12:10:26.431Z";
@@ -172,9 +172,9 @@ class JacksonJqExtensionModulesTest {
     /**
      * Example of jackson-jq-ext-module-time extension module usage via expression include when an alternative path is
      * configured.
-     * 1) Since no quarkus.jackson.jq.modules.uuid.strategy is configured, the default "register" strategy is applied.
-     * 2) Since the quarkus.jackson.jq.modules.uuid.path=jackson-jq/uuid-example-path, was provided, the module is
-     * registered under the path "jackson-jq/uuid-example-path".
+     * 1) Since no quarkus.jackson.jq.modules.time.strategy is configured, the default "register" strategy is applied.
+     * 2) Since the quarkus.jackson.jq.modules.time.path=jackson-jq/time-example-path, was provided, the module is
+     * registered under the path "jackson-jq/time-example-path".
      */
     @Test
     void timeModuleExpressionIncludeWithConfiguredPathTest() {
@@ -182,7 +182,7 @@ class JacksonJqExtensionModulesTest {
         final Document doc = new Document();
         doc.setDocument(objectMapper.readTree("{}"));
         // import the module by using the user provided registration path "jackson-jq/uuid-example-path".
-        String INCLUDE = "include \"jackson-jq/uuid-example-path\"; ";
+        String INCLUDE = "include \"jackson-jq/time-example-path\"; ";
 
         doc.setExpression(INCLUDE + "1792152626431 | strftime(\"yyyy-MM-dd HH:mm:ss.SSSXXX\"; \"UTC\")");
         String expectedTime = "2026-10-16 12:10:26.431Z";
@@ -236,11 +236,11 @@ class JacksonJqExtensionModulesTest {
 
     /**
      * Example of jackson-jq-ext-module-random extension module usage when configured with the "include" strategy.
-     * 1) Since the quarkus.jackson.jq.modules.random.strategy=incluce is configured, the module functions
+     * 1) Since the quarkus.jackson.jq.modules.random.strategy=include is configured, the module functions
      * can be used directly on every query with the given name, e.g. myfunc(...).
      */
     @Test
-    void randomModuleIncldeTest() {
+    void randomModuleIncludeTest() {
         final ObjectMapper objectMapper = new ObjectMapper();
         final Document doc = new Document();
         doc.setDocument(objectMapper.readTree("{}"));

@@ -16,6 +16,7 @@ public class EnvironmentProducer {
     }
 
     @Produces
+    @Singleton
     public Environment<JsonNode> produce() {
         return environmentSupplier.get();
     }

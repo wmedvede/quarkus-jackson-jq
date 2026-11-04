@@ -61,11 +61,10 @@ public interface JacksonJqConfig {
         boolean enabled();
 
         /**
-         * Configures strategy for incorporating the jackson-jq model into the Environment.
+         * Configures strategy for incorporating the jackson-jq module into the Environment.
          *
          * @return the configured strategy.
          */
-
         @WithDefault("register")
         Strategy strategy();
 
