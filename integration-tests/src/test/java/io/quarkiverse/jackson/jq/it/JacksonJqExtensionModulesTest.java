@@ -143,7 +143,7 @@ class JacksonJqExtensionModulesTest {
      * configured.
      * 1) Since no quarkus.jackson.jq.modules.time.strategy is configured, the default "register" strategy is applied.
      * 2) Since the quarkus.jackson.jq.modules.time.path=jackson-jq/time-example-path, was provided, the module is
-     * registered under the path "jackson-jq/uuid-example-path".
+     * registered under the path "jackson-jq/time-example-path".
      */
     @Test
     void timeModuleExpressionImportWithConfiguredPathTest() {
@@ -181,7 +181,7 @@ class JacksonJqExtensionModulesTest {
         final ObjectMapper objectMapper = new ObjectMapper();
         final Document doc = new Document();
         doc.setDocument(objectMapper.readTree("{}"));
-        // import the module by using the user provided registration path "jackson-jq/uuid-example-path".
+        // import the module by using the user provided registration path "jackson-jq/time-example-path".
         String INCLUDE = "include \"jackson-jq/time-example-path\"; ";
 
         doc.setExpression(INCLUDE + "1792152626431 | strftime(\"yyyy-MM-dd HH:mm:ss.SSSXXX\"; \"UTC\")");
@@ -271,7 +271,7 @@ class JacksonJqExtensionModulesTest {
         doc.setDocument(objectMapper.createObjectNode().stringNode("aba"));
         // The module is automatically shipped by the extension as maven dependency. No additional configuration is
         // set in the application.properties so the default strategy = register is applied. And thus, the module is
-        // it registered in the Environment with the default path "jackson-jq/joni". We must either "import"
+        // registered in the Environment with the default path "jackson-jq/joni". We must either "import"
         // or "include" in the expression for usage.
         String IMPORT = "import \"jackson-jq/joni\" as joni; ";
         doc.setExpression(IMPORT + "joni::splits((\"a\", \"b\"))");
