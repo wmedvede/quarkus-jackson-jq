@@ -11,12 +11,22 @@ import net.thisptr.jackson.jq.v2.spi.FunctionSignature;
 import net.thisptr.jackson.jq.v2.spi.JqFunction;
 import net.thisptr.jackson.jq.v2.spi.version.Version;
 
+/**
+ * A {@link FunctionLoader} that decorates another one and only exposes the functions accepted by a
+ * {@link FunctionFilter}. The filtered result is cached per jq {@link Version}.
+ * <p>
+ * The {@link FunctionContext#getLocator() locator} given to the filter is the class name of the decorated loader.
+ */
 public class FilteringFunctionLoader implements FunctionLoader {
     private final FunctionLoader delegate;
     private final FunctionFilter filter;
     private final ConcurrentHashMap<Version, Map<FunctionSignature, Function>> cache = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<Version, Map<FunctionSignature, JqFunction>> jqCache = new ConcurrentHashMap<>();
 
+    /**
+     * @param delegate the loader that provides the functions to filter.
+     * @param filter the filter that decides which functions are exposed.
+     */
     public FilteringFunctionLoader(FunctionLoader delegate, FunctionFilter filter) {
         this.delegate = delegate;
         this.filter = filter;

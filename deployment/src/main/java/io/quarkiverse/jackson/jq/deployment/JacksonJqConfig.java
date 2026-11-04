@@ -12,16 +12,26 @@ import io.smallrye.config.WithConverter;
 import io.smallrye.config.WithDefault;
 import net.thisptr.jackson.jq.v2.spi.version.Version;
 
+/**
+ * Build time configuration of the jackson-jq extension.
+ */
 @ConfigRoot(phase = ConfigPhase.BUILD_TIME)
 @ConfigMapping(prefix = "quarkus.jackson.jq")
 public interface JacksonJqConfig {
 
+    /**
+     * The ways a module can be incorporated into the jq {@link net.thisptr.jackson.jq.v2.core.Environment}.
+     */
     enum Strategy {
+        /** The expression must {@code import} or {@code include} the module by its path. */
         REGISTER,
+        /** The module functions are available as {@code alias::function}, without an {@code import} in the expression. */
         IMPORT,
+        /** The module functions are available by their bare name, without an {@code include} in the expression. */
         INCLUDE
     }
 
+    /** The strategy applied to a module when none is configured. */
     Strategy DEFAULT_STRATEGY = Strategy.REGISTER;
 
     /**

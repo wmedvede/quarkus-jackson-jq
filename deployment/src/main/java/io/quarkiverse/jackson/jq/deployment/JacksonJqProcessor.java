@@ -56,6 +56,13 @@ import net.thisptr.jackson.jq.v2.spi.version.Version;
 import net.thisptr.jackson.jq.v2.spi.version.VersionRange;
 import tools.jackson.databind.JsonNode;
 
+/**
+ * Build time processor of the jackson-jq extension.
+ * <p>
+ * It detects the active extension modules and the custom functions of the application, generates the classes that
+ * wrap the modules to apply the function filtering, and registers the jq
+ * {@link net.thisptr.jackson.jq.v2.core.Environment} as a CDI bean.
+ */
 class JacksonJqProcessor {
     private static final String FEATURE = "jackson-jq";
     private static final Logger LOGGER = LoggerFactory.getLogger(JacksonJqProcessor.class);
@@ -65,6 +72,14 @@ class JacksonJqProcessor {
         return new FeatureBuildItem(FEATURE);
     }
 
+    /**
+     * Detects the jackson-jq extension modules that are part of the project dependencies and produces a
+     * {@link JacksonJqModuleBuildItem} for each enabled one, applying the configured strategy.
+     * <p>
+     * Fails the build if a module is configured with the {@code import} strategy and no alias, or if both the
+     * {@code joni} and {@code re2} regular expression modules are enabled. Configuration of modules that are unknown
+     * or not part of the dependencies only logs a warning.
+     */
     @BuildStep
     void scanModules(JacksonJqConfig config, CurateOutcomeBuildItem curateOutcome,
             BuildProducer<JacksonJqModuleBuildItem> moduleBuildItemBuildProducer) {
@@ -132,6 +147,11 @@ class JacksonJqProcessor {
         });
     }
 
+    /**
+     * Discovers, in the application classes only, the {@link Function} implementations annotated with
+     * {@link FunctionRegistration} (or {@link FunctionRegistrations} when repeated) and produces a
+     * {@link JacksonJqFunctionBuildItem} for each registration.
+     */
     @BuildStep
     void scanFunctions(ApplicationIndexBuildItem applicationIndex,
             BuildProducer<JacksonJqFunctionBuildItem> functionBuildItemBuildProducer) {
@@ -161,6 +181,11 @@ class JacksonJqProcessor {
                 });
     }
 
+    /**
+     * Registers the service that creates the jq {@link Environment} at static init, exposes it as a synthetic bean,
+     * and keeps {@link EnvironmentProducer} so the {@code Environment<JsonNode>} can be injected, or programmatically
+     * looked up, even if no bean injects it.
+     */
     @BuildStep
     void registerEnvironmentBeans(JacksonJqConfig config, List<JacksonJqModuleBuildItem> moduleBuildItems,
             List<JacksonJqFunctionBuildItem> functionBuildItems,
@@ -196,6 +221,13 @@ class JacksonJqProcessor {
         additionalBeans.produce(AdditionalBeanBuildItem.unremovableOf(EnvironmentProducer.class));
     }
 
+    /**
+     * Generates, for each enabled module, a class in the {@code io.quarkiverse.jackson.jq.modules} package that extends
+     * {@link FilteringJavaModule} or {@link FilteringJqModule}, depending on the module type. The generated class
+     * instantiates the original module and repeats its {@link ModuleRegistration} annotations.
+     *
+     * @throws IllegalStateException if a module class can't be loaded.
+     */
     @BuildStep
     void generateFilteringModules(List<JacksonJqModuleBuildItem> moduleBuildItems,
             BuildProducer<GeneratedClassBuildItem> generatedClassProducer) {
@@ -249,6 +281,10 @@ class JacksonJqProcessor {
         }
     }
 
+    /**
+     * Registers for reflection, in native mode, the enabled module classes and the custom function classes, which are
+     * instantiated by name at static init.
+     */
     @BuildStep
     void registerForNative(List<JacksonJqModuleBuildItem> moduleBuildItems,
             List<JacksonJqFunctionBuildItem> functionBuildItems,
@@ -259,6 +295,10 @@ class JacksonJqProcessor {
                 .produce(ReflectiveClassBuildItem.builder(functionItem.getFunctionDescriptor().className()).build()));
     }
 
+    /**
+     * Builds the descriptor of a function from its {@link FunctionRegistration} annotation. A missing {@code version}
+     * attribute means the function is available in every jq version.
+     */
     private static FunctionDescriptor newFunctionDescriptor(String className, AnnotationInstance annotation) {
         String name = annotation.value("name").asString();
         int nargs = annotation.value("nargs").asInt();
@@ -270,6 +310,10 @@ class JacksonJqProcessor {
         return new FunctionDescriptor(name, nargs, className, versionRange.toString());
     }
 
+    /**
+     * @return the version, or {@code null} if all its components are negative, meaning unbounded. A negative component
+     *         mixed with non-negative ones is treated as 0.
+     */
     private static Version parseVersion(AnnotationInstance versionInstance) {
         int major = versionInstance.value("major").asInt();
         int minor = versionInstance.value("minor").asInt();
@@ -288,6 +332,10 @@ class JacksonJqProcessor {
         return null;
     }
 
+    /**
+     * Reads a {@code VersionRangeSpec}. An unset {@code min}/{@code max} is unbounded, {@code min} is inclusive and
+     * {@code max} is exclusive by default.
+     */
     private static VersionRange parseVersionRange(AnnotationInstance versionRangeSpecInstance) {
         Version min = parseVersion(versionRangeSpecInstance, "min");
         boolean minInclusive = parseBoolean(versionRangeSpecInstance, "minInclusive", true);
@@ -303,6 +351,10 @@ class JacksonJqProcessor {
         return defaultValue;
     }
 
+    /**
+     * @return the name of the generated filtering class for a module class, e.g.
+     *         {@code io.quarkiverse.jackson.jq.modules.FilteringUuidModule}.
+     */
     private static String generateFilteringClassName(String className) {
         int lastSeparator = className.lastIndexOf(".");
         String simpleClassName = className.substring(lastSeparator + 1);

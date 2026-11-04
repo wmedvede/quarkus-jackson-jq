@@ -49,10 +49,18 @@ public final class JacksonJqModuleRegistry {
     private JacksonJqModuleRegistry() {
     }
 
+    /**
+     * @param id the module id, e.g. {@code uuid}.
+     * @return the module descriptor, or {@code null} if the id is not a known module.
+     */
     public static ModuleDescriptor findById(String id) {
         return MODULES.stream().filter(m -> m.id().equals(id)).findFirst().orElse(null);
     }
 
+    /**
+     * @param artifactId the artifact id of the module, e.g. {@code jackson-jq-ext-module-uuid}.
+     * @return the module descriptor, or {@code null} if the artifact is not a known module.
+     */
     public static ModuleDescriptor findByArtifactId(String artifactId) {
         return MODULES.stream().filter(m -> m.artifactId().equals(artifactId)).findFirst().orElse(null);
     }

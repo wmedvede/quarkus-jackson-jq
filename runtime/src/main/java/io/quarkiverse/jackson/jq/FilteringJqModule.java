@@ -9,12 +9,25 @@ import net.thisptr.jackson.jq.v2.spi.module.JqModule;
 import net.thisptr.jackson.jq.v2.spi.module.Module;
 import net.thisptr.jackson.jq.v2.spi.module.ModuleMeta;
 
+/**
+ * A {@link JqModule} (a module defined in jq source code) that decorates another one.
+ * <p>
+ * The functions defined in the jq source code of the module are not filtered, only the Java modules that the module
+ * eventually loads are. The extension generates, at build time, one subclass per enabled {@link JqModule}. The
+ * subclass instantiates the original module and keeps its
+ * {@link net.thisptr.jackson.jq.v2.spi.annotations.ModuleRegistration} annotations.
+ */
 public class FilteringJqModule implements JqModule {
 
     private final JqModule delegate;
     private final FunctionFilter filter;
     private final String locator;
 
+    /**
+     * @param delegate the module to decorate.
+     * @param filter the filter applied to the Java modules loaded by the module.
+     * @param locator the {@link FunctionContext#getLocator() locator} given to the filter, the module id.
+     */
     public FilteringJqModule(JqModule delegate, FunctionFilter filter, String locator) {
         this.delegate = delegate;
         this.filter = filter;

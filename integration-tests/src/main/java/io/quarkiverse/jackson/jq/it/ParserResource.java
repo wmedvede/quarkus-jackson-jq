@@ -37,6 +37,10 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.node.ArrayNode;
 
+/**
+ * Test resource that evaluates jq expressions with the {@link Environment} created by the extension, and lists the
+ * functions available in it.
+ */
 @Path("/jq")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
@@ -51,6 +55,11 @@ public class ParserResource {
     @Inject
     ObjectMapper mapper;
 
+    /**
+     * @param document the jq expression and the JSON document to evaluate it on.
+     * @return the outputs of the expression.
+     * @throws JsonQueryException if the expression is invalid or fails, e.g. it invokes an excluded function.
+     */
     @Path("/parse")
     @POST
     public List<JsonNode> parse(final Document document) throws JsonQueryException {
@@ -60,6 +69,9 @@ public class ParserResource {
         return out;
     }
 
+    /**
+     * @return the {@code name/arity} of the functions defined in jq source code.
+     */
     @Path("/jqfunctions")
     @GET
     public ArrayNode jqFunctions() {
@@ -69,6 +81,9 @@ public class ParserResource {
         return answer;
     }
 
+    /**
+     * @return the {@code name/arity} of the functions implemented in Java.
+     */
     @Path("/functions")
     @GET
     public ArrayNode functions() {
@@ -78,6 +93,9 @@ public class ParserResource {
         return answer;
     }
 
+    /**
+     * @return the sorted {@code name/arity} of all the functions, both jq and Java.
+     */
     @Path("/allfunctions")
     @GET
     public ArrayNode allFunctions() {

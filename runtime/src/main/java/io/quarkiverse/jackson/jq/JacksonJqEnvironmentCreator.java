@@ -16,6 +16,9 @@ import net.thisptr.jackson.jq.v2.spi.module.Module;
 import net.thisptr.jackson.jq.v2.spi.version.Version;
 import tools.jackson.databind.JsonNode;
 
+/**
+ * Creates the jackson-jq {@link Environment} exposed by the extension.
+ */
 public class JacksonJqEnvironmentCreator {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(JacksonJqEnvironmentCreator.class);
@@ -23,6 +26,16 @@ public class JacksonJqEnvironmentCreator {
     private JacksonJqEnvironmentCreator() {
     }
 
+    /**
+     * Creates an {@link Environment} with the built-in functions, the custom functions and the enabled modules. The
+     * excluded functions are removed from the built-in functions, the custom functions and the Java modules.
+     *
+     * @param version the jq version.
+     * @param excludes the names of the functions to exclude.
+     * @param enabledModules the modules to incorporate into the environment.
+     * @param customFunctions the custom functions discovered at build time.
+     * @return the environment.
+     */
     public static Environment<JsonNode> createEnvironment(String version, List<String> excludes,
             List<EnabledModule> enabledModules, List<FunctionDescriptor> customFunctions) {
         FunctionFilter filter = FunctionFilter.denyNames(new HashSet<>(excludes));

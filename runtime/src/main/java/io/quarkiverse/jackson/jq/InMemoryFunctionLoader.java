@@ -13,10 +13,18 @@ import net.thisptr.jackson.jq.v2.spi.JqFunction;
 import net.thisptr.jackson.jq.v2.spi.version.Version;
 import net.thisptr.jackson.jq.v2.spi.version.VersionRange;
 
+/**
+ * A {@link FunctionLoader} that provides the custom functions discovered at build time. Only the functions whose
+ * version range contains the configured jq version are instantiated.
+ */
 public class InMemoryFunctionLoader implements FunctionLoader {
 
     private final Map<FunctionSignature, Function> functions = new HashMap<>();
 
+    /**
+     * @param functionDescriptors the custom functions discovered at build time.
+     * @param version the configured jq version.
+     */
     public InMemoryFunctionLoader(List<FunctionDescriptor> functionDescriptors, Version version) {
         functionDescriptors.forEach(descriptor -> {
             VersionRange versionRange = VersionRange.valueOf(descriptor.versionRange());
